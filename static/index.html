@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SALSERO — Alitas y Salsas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #fefefe; color: #1f2937; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; }
+        header { background: #dc2626; color: white; padding: 30px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
+        header h1 { font-size: 32px; margin-bottom: 5px; }
+        header p { font-size: 16px; opacity: 0.9; }
+        h2 { font-size: 22px; margin-bottom: 20px; color: #1f2937; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+        .productos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .producto { border: 1px solid #e5e7eb; border-radius: 10px; padding: 18px; background: white; transition: box-shadow 0.2s; }
+        .producto:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .producto h3 { font-size: 17px; color: #dc2626; margin-bottom: 5px; }
+        .producto .desc { font-size: 14px; color: #6b7280; margin-bottom: 10px; }
+        .producto .precio { font-size: 19px; font-weight: bold; color: #16a34a; margin-bottom: 12px; }
+        .btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn-agregar { background: #dc2626; color: white; }
+        .carrito { background: #f9fafb; border-radius: 10px; padding: 25px; margin-bottom: 40px; }
+        .item-carrito { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+        .cantidad { display: flex; align-items: center; gap: 8px; }
+        .cantidad button { width: 28px; height: 28px; border-radius: 50%; border: none; background: #d1d5db; cursor: pointer; font-weight: bold; font-size: 16px; }
+        .total { text-align: right; font-size: 22px; font-weight: bold; margin-top: 15px; color: #1f2937; }
+        .seccion { margin-bottom: 40px; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; color: #374151; }
+        input, textarea { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; }
+        input:focus, textarea:focus { outline: none; border-color: #dc2626; }
+        .btn-enviar { background: #16a34a; color: white; font-size: 17px; padding: 14px; margin-top: 10px; }
+        .gps-row { display: flex; gap: 10px; margin-bottom: 16px; }
+        .gps-row input { flex: 1; margin-bottom: 0; }
+        .btn-gps { background: #2563eb; color: white; border: none; padding: 12px 16px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+        .btn-gps:disabled { background: #9ca3af; cursor: not-allowed; }
+        .gps-ayuda { font-size: 12px; color: #6b7280; margin: -10px 0 14px 0; }
+        .vacio { text-align: center; color: #6b7280; padding: 20px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍗 SALSERO — Alitas y Salsas</h1>
+        <p>Las mejores alitas, listas para llevar a tu puerta!</p>
+    </header>
+
+    <!-- PRODUCTOS -->
+    <section class="seccion">
+        <h2>Nuestros Productos</h2>
+        <div class="productos-grid" id="lista-productos">
+            <p style="grid-column: 1/-1; text-align: center; color: #666">Cargando productos...</p>
+        </div>
+    </section>
+
+    <!-- CARRITO -->
+    <section class="seccion carrito">
+        <h2>Tu Carrito</h2>
+        <div id="items-carrito">
+            <p class="vacio">Tu carrito está vacío</p>
+        </div>
+        <div class="total">Total: Bs. <span id="total">0,00</span></div>
+    </section>
+
+    <!-- DATOS DE ENVÍO -->
+    <section class="seccion">
+        <h2>Datos de Envío</h2>
+        <form id="form-pedido">
+            <label>Nombre Completo *</label>
+            <input type="text" id="nombre" required>
+            
+            <label>CI / NIT *</label>
+            <input type="text" id="ci_nit" required>
+            
+            <label>Teléfono *</label>
+            <input type="tel" id="telefono" required>
+            
+            <label>Dirección *</label>
+            <textarea id="direccion" rows="3" required placeholder="Calle, número, zona o referencia"></textarea>
+            
+            <label>📍 Ubicación GPS (opcional)</label>
+            <div class="gps-row">
+                <input type="text" id="ubicacion_gps" placeholder="Latitud, Longitud">
+                <button type="button" id="btn-gps" class="btn-gps">📍 Mi Ubicación</button>
+            </div>
+            <p class="gps-ayuda">Al hacer clic, el navegador pedirá permiso para compartir tu ubicación exacta</p>
+            
+            <button type="submit" class="btn btn-enviar">✅ Enviar Pedido</button>
+        </form>
+    </section>
+
+    <script>
+        let productos = [];
+        let carrito = [];
+
+        async function cargarProductos() {
+            try {
+                const res = await fetch('/productos');
+                productos = await res.json();
+                mostrarProductos();
+            } catch (err) {
+                document.getElementById('lista-productos').innerHTML = 
+                    '<p style="color:red;text-align:center">Error al cargar productos</p>';
+            }
+        }
+
+        function mostrarProductos() {
+            const contenedor = document.getElementById('lista-productos');
+            contenedor.innerHTML = '';
+            productos.forEach(p => {
+                contenedor.innerHTML += `
+                    <div class="producto">
+                        <h3>${p.nombre}</h3>
+                        <p class="desc">${p.descripcion || ''}</p>
+                        <p class="precio">Bs. ${p.precio}</p>
+                        <button class="btn btn-agregar" onclick="agregarAlCarrito(${p.id})">Agregar al carrito</button>
+                    </div>
+                `;
+            });
+        }
+
+        function agregarAlCarrito(id) {
+            const existe = carrito.find(i => i.id === id);
+            if (existe) existe.cantidad++;
+            else carrito.push({ id, cantidad: 1 });
+            actualizarCarrito();
+        }
+
+        function quitarDelCarrito(id) {
+            const idx = carrito.findIndex(i => i.id === id);
+            if (idx !== -1) {
+                carrito[idx].cantidad--;
+                if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
+            }
+            actualizarCarrito();
+        }
+
+        function actualizarCarrito() {
+            const contenedor = document.getElementById('items-carrito');
+            const elemTotal = document.getElementById('total');
+            let total = 0;
+
+            if (carrito.length === 0) {
+                contenedor.innerHTML = '<p class="vacio">Tu carrito está vacío</p>';
+                elemTotal.textContent = '0,00';
+                return;
+            }
+
+            contenedor.innerHTML = '';
+            carrito.forEach(item => {
+                const prod = productos.find(p => p.id === item.id);
+                const subtotal = parseFloat(prod.precio) * item.cantidad;
+                total += subtotal;
+                contenedor.innerHTML += `
+                    <div class="item-carrito">
+                        <div>
+                            <strong>${prod.nombre}</strong><br>
+                            Bs. ${prod.precio} c/u
+                        </div>
+                        <div class="cantidad">
+                            <button onclick="quitarDelCarrito(${item.id})">−</button>
+                            <span>${item.cantidad}</span>
+                            <button onclick="agregarAlCarrito(${item.id})">+</button>
+                            <span style="margin-left:10px; font-weight:bold">Bs. ${subtotal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            elemTotal.textContent = total.toFixed(2);
+        }
+
+        // OBTENER UBICACIÓN GPS
+        const btnGPS = document.getElementById('btn-gps');
+        const inputGPS = document.getElementById('ubicacion_gps');
+        
+        btnGPS.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                alert('❌ Tu navegador no soporta ubicación GPS');
+                return;
+            }
+            
+            btnGPS.textContent = '⏳ Obteniendo...';
+            btnGPS.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(
+                function(posicion) {
+                    const lat = posicion.coords.latitude.toFixed(6);
+                    const lng = posicion.coords.longitude.toFixed(6);
+                    inputGPS.value = `${lat}, ${lng}`;
+                    btnGPS.textContent = '✅ Ubicación obtenida';
+                    btnGPS.style.background = '#16a34a';
+                    setTimeout(() => {
+                        btnGPS.textContent = '📍 Mi Ubicación';
+                        btnGPS.style.background = '';
+                        btnGPS.disabled = false;
+                    }, 3000);
+                },
+                function(error) {
+                    let mensaje = 'No se pudo obtener la ubicación. ';
+                    if (error.code === 1) mensaje += 'Debes permitir el acceso a la ubicación.';
+                    if (error.code === 2) mensaje += 'No hay señal de GPS disponible.';
+                    if (error.code === 3) mensaje += 'Tiempo de espera agotado. Intenta de nuevo.';
+                    alert('❌ ' + mensaje);
+                    btnGPS.textContent = '📍 Mi Ubicación';
+                    btnGPS.disabled = false;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        });
+
+        // ENVIAR PEDIDO
+        document.getElementById('form-pedido').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (carrito.length === 0) {
+                alert('❌ Agrega productos al carrito antes de enviar tu pedido');
+                return;
+            }
+
+            const pedido = {
+                nombre: document.getElementById('nombre').value,
+                ci_nit: document.getElementById('ci_nit').value,
+                telefono: document.getElementById('telefono').value,
+                direccion: document.getElementById('direccion').value,
+                ubicacion_gps: document.getElementById('ubicacion_gps').value || '',
+                items: carrito
+            };
+
+            try {
+                const res = await fetch('/pedidos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pedido)
+                });
+                const resultado = await res.json();
+                alert(`✅ ¡Pedido enviado con éxito!\nNúmero de pedido: #${resultado.id}`);
+                carrito = [];
+                actualizarCarrito();
+                e.target.reset();
+            } catch (err) {
+                alert('❌ Error al enviar el pedido. Verifica que el servidor esté encendido.');
+            }
+        });
+
+        cargarProductos();
+    </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SALSERO — Productos</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #f8f9fa; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .header { background: #dc2626; color: white; padding: 25px; border-radius: 10px; margin-bottom: 25px; text-align: center; }
+        h1 { font-size: 28px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        th { background: #dc2626; color: white; padding: 15px; text-align: left; font-weight: 600; }
+        td { padding: 15px; border-bottom: 1px solid #eee; }
+        tr:hover { background: #fef2f2; }
+        .precio { font-weight: bold; color: #16a34a; font-size: 18px; }
+        .refrescar { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 15px; margin-bottom: 20px; }
+        .refrescar:hover { background: #1d4ed8; }
+        .vacio { text-align: center; padding: 40px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍗 SALSERO — Lista de Productos</h1>
+    </div>
+
+    <button class="refrescar" onclick="cargarProductos()">🔄 Refrescar</button>
+
+    <table id="tablaProductos">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+            </tr>
+        </thead>
+        <tbody id="listaProductos">
+            <tr><td colspan="4" class="vacio">Cargando productos...</td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        async function cargarProductos() {
+            try {
+                const res = await fetch('/productos');
+                const productos = await res.json();
+                const tbody = document.getElementById('listaProductos');
+                
+                if (productos.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="vacio">No hay productos registrados</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = '';
+                productos.forEach(p => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${p.id}</strong></td>
+                            <td><strong>${p.nombre}</strong></td>
+                            <td>${p.descripcion || '-'}</td>
+                            <td class="precio">Bs. ${p.precio}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                document.getElementById('listaProductos').innerHTML = 
+                    '<tr><td colspan="4" style="color:red;text-align:center;padding:20px">Error al cargar productos</td></tr>';
+            }
+        }
+
+        cargarProductos();
+    </script>
+</body>
+</html>
