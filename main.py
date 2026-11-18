@@ -8,7 +8,7 @@ import os
 
 app = FastAPI()
 
-# ── Carpeta sin tilde: "static" ──
+# Carpeta sin tilde: "static"
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 ARCHIVO_DATOS = "datos.json"
@@ -44,7 +44,7 @@ class Pedido(BaseModel):
     ubicacion: Optional[str] = None
     items: List[ItemPedido]
 
-# ── Rutas de páginas corregidas ──
+# Rutas de páginas corregidas a carpeta "static"
 @app.get("/")
 def raiz():
     return FileResponse("static/index.html")
@@ -61,13 +61,13 @@ def productos():
 def pedidos():
     return FileResponse("static/pedidos.html")
 
-# ── API Productos ──
+# API Productos
 @app.get("/api/productos")
 def obtener_productos():
     datos = cargar_datos()
     return datos["productos"]
 
-# ── API Pedidos ──
+# API Pedidos
 @app.get("/api/pedidos")
 def obtener_pedidos():
     datos = cargar_datos()
