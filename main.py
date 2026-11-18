@@ -8,8 +8,8 @@ import os
 
 app = FastAPI()
 
-# ── ✅ Ahora buscamos exactamente cómo se llama en GitHub ──
-app.mount("/static", StaticFiles(directory="estático"), name="static")
+# ── Carpeta sin tilde: "static" ──
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 ARCHIVO_DATOS = "datos.json"
 
@@ -44,22 +44,22 @@ class Pedido(BaseModel):
     ubicacion: Optional[str] = None
     items: List[ItemPedido]
 
-# ── ✅ Corregimos también todas las rutas de páginas ──
+# ── Rutas de páginas corregidas ──
 @app.get("/")
 def raiz():
-    return FileResponse("estático/index.html")
+    return FileResponse("static/index.html")
 
 @app.get("/admin")
 def admin():
-    return FileResponse("estático/admin.html")
+    return FileResponse("static/admin.html")
 
 @app.get("/productos")
 def productos():
-    return FileResponse("estático/productos.html")
+    return FileResponse("static/productos.html")
 
 @app.get("/pedidos")
 def pedidos():
-    return FileResponse("estático/pedidos.html")
+    return FileResponse("static/pedidos.html")
 
 # ── API Productos ──
 @app.get("/api/productos")
