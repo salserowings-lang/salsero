@@ -1,109 +1,132 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from typing import List, Dict, Optional
 import json
-from datetime import datetime
-from typing import List, Optional
+import os
 
 app = FastAPI()
 
-# Configurar CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── CORREGIDO: ahora busca la carpeta llamada "estático" ──
+app.mount("/static", StaticFiles(directory="estático"), name="static")
 
-# Servir archivos estáticos
-app.mount("/static", StaticFiles(directory="static"), name="static")
+ARCHIVO_DATOS = "datos.json"
 
-# Modelos
+def cargar_datos():
+    if not os.path.exists(ARCHIVO_DATOS):
+        return {
+            "productos": [
+                {"id": 1, "nombre": "Alitas Clásicas", "precio": 90, "stock": 50, "descripcion": "10 alitas + papas", "imagen": "alitas-clasicas.jpg"},
+                {"id": 2, "nombre": "Alitas Picantes", "precio": 100, "stock": 50, "descripcion": "Salsa picante especial", "imagen": "alitas-picantes.jpg"},
+                {"id": 3, "nombre": "Alitas BBQ", "precio": 100, "stock": 50, "descripcion": "Salsa barbacoa ahumada", "imagen": "alitas-bbq.jpg"},
+                {"id": 4, "nombre": "Alitas Miel Ajo", "precio": 105, "stock": 40, "descripcion": "Dulce y salado", "imagen": "alitas-miel.jpg"},
+                {"id": 5, "nombre": "Papas Fritas", "precio": 35, "stock": 100, "descripcion": "Porción grande", "imagen": "papas.jpg"},
+                {"id": 6, "nombre": "Refresco 500ml", "precio": 15, "stock": 150, "descripcion": "Coca-Cola / Inca Kola", "imagen": "refresco.jpg"}
+            ],
+            "pedidos": []
+        }
+    with open(ARCHIVO_DATOS, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def guardar_datos(datos):
+    with open(ARCHIVO_DATOS, "w", encoding="utf-8") as f:
+        json.dump(datos, f, ensure_ascii=False, indent=2)
+
 class ItemPedido(BaseModel):
-    id: int
+    producto_id: int
     cantidad: int
 
 class Pedido(BaseModel):
-    id: Optional[int] = None
-    nombre: str
-    ci_nit: str
+    nombre_cliente: str
     telefono: str
     direccion: str
-    ubicacion_gps: Optional[str] = ""
+    ubicacion: Optional[str] = None
     items: List[ItemPedido]
-    fecha: Optional[str] = None
-    estado: Optional[str] = "pendiente"
 
-# Rutas de páginas
+# ── Páginas ──
 @app.get("/")
-async def raiz():
-    return FileResponse("static/index.html")
+def raiz():
+    return FileResponse("estático/index.html")
 
-@app.get("/admin.html")
-async def admin():
-    return FileResponse("static/admin.html")
+@app.get("/admin")
+def admin():
+    return FileResponse("estático/admin.html")
 
-@app.get("/lista-productos")
-async def lista_productos():
-    return FileResponse("static/productos.html")
-
-@app.get("/lista-pedidos")
-async def lista_pedidos():
-    return FileResponse("static/pedidos.html")
-
-# API — Obtener productos
 @app.get("/productos")
-def obtener_productos():
-    with open("datos.json", "r", encoding="utf-8") as f:
-        datos = json.load(f)
-    return datos.get("productos", [])
+def productos():
+    return FileResponse("estático/productos.html")
 
-# API — Obtener todos los pedidos
 @app.get("/pedidos")
+def pedidos():
+    return FileResponse("estático/pedidos.html")
+
+# ── API Productos ──
+@app.get("/api/productos")
+def obtener_productos():
+    datos = cargar_datos()
+    return datos["productos"]
+
+# ── API Pedidos ──
+@app.get("/api/pedidos")
 def obtener_pedidos():
-    with open("datos.json", "r", encoding="utf-8") as f:
-        datos = json.load(f)
-    return datos.get("pedidos", [])
+    datos = cargar_datos()
+    return datos["pedidos"]
 
-# API — Crear nuevo pedido
-@app.post("/pedidos")
+@app.post("/api/pedidos")
 def crear_pedido(pedido: Pedido):
-    with open("datos.json", "r+", encoding="utf-8") as f:
-        datos = json.load(f)
-        if "pedidos" not in datos:
-            datos["pedidos"] = []
-        nuevo_id = len(datos["pedidos"]) + 1
-        pedido.id = nuevo_id
-        pedido.fecha = datetime.now().isoformat()
-        pedido.estado = "pendiente"
-        datos["pedidos"].append(pedido.dict())
-        f.seek(0)
-        f.truncate()
-        json.dump(datos, f, indent=2, ensure_ascii=False)
-    return {"mensaje": "Pedido recibido correctamente", "id": nuevo_id}
-
-# API — Eliminar pedido por ID
-@app.delete("/pedidos/{pedido_id}")
-def eliminar_pedido(pedido_id: int):
-    with open("datos.json", "r+", encoding="utf-8") as f:
-        datos = json.load(f)
-        if "pedidos" not in datos:
-            raise HTTPException(status_code=404, detail="No hay pedidos")
-        
-        lista_pedidos = datos["pedidos"]
-        indice = next((i for i, p in enumerate(lista_pedidos) if p.get("id") == pedido_id), None)
-        
-        if indice is None:
-            raise HTTPException(status_code=404, detail="Pedido no encontrado")
-        
-        eliminado = lista_pedidos.pop(indice)
-        f.seek(0)
-        f.truncate()
-        json.dump(datos, f, indent=2, ensure_ascii=False)
+    datos = cargar_datos()
     
-    return {"mensaje": "Pedido eliminado correctamente", "pedido": eliminado}
+    nuevo_pedido = {
+        "id": len(datos["pedidos"]) + 1,
+        "nombre_cliente": pedido.nombre_cliente,
+        "telefono": pedido.telefono,
+        "direccion": pedido.direccion,
+        "ubicacion": pedido.ubicacion,
+        "items": [],
+        "total": 0,
+        "estado": "pendiente"
+    }
+    
+    total = 0
+    for item in pedido.items:
+        prod = next((p for p in datos["productos"] if p["id"] == item.producto_id), None)
+        if not prod:
+            raise HTTPException(status_code=404, detail=f"Producto {item.producto_id} no encontrado")
+        if prod["stock"] < item.cantidad:
+            raise HTTPException(status_code=400, detail=f"Stock insuficiente para {prod['nombre']}")
+        
+        prod["stock"] -= item.cantidad
+        subtotal = prod["precio"] * item.cantidad
+        total += subtotal
+        nuevo_pedido["items"].append({
+            "producto_id": item.producto_id,
+            "nombre": prod["nombre"],
+            "cantidad": item.cantidad,
+            "precio_unitario": prod["precio"],
+            "subtotal": subtotal
+        })
+    
+    nuevo_pedido["total"] = total
+    datos["pedidos"].insert(0, nuevo_pedido)
+    guardar_datos(datos)
+    
+    return {"mensaje": "Pedido recibido ✅", "pedido": nuevo_pedido}
 
+@app.patch("/api/pedidos/{pedido_id}")
+def actualizar_estado(pedido_id: int, estado: str):
+    datos = cargar_datos()
+    for p in datos["pedidos"]:
+        if p["id"] == pedido_id:
+            p["estado"] = estado
+            guardar_datos(datos)
+            return {"mensaje": "Estado actualizado ✅"}
+    raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
+@app.get("/api/estado")
+def estado_servicio():
+    return {"mensaje": "SALSERO funcionando correctamente ✅"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
