@@ -8,7 +8,7 @@ import os
 
 app = FastAPI()
 
-# ── CORREGIDO: ahora busca la carpeta llamada "estático" ──
+# ── ✅ Ahora buscamos exactamente cómo se llama en GitHub ──
 app.mount("/static", StaticFiles(directory="estático"), name="static")
 
 ARCHIVO_DATOS = "datos.json"
@@ -44,7 +44,7 @@ class Pedido(BaseModel):
     ubicacion: Optional[str] = None
     items: List[ItemPedido]
 
-# ── Páginas ──
+# ── ✅ Corregimos también todas las rutas de páginas ──
 @app.get("/")
 def raiz():
     return FileResponse("estático/index.html")
