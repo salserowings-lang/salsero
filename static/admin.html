@@ -1,129 +1,105 @@
-        const API = "/api";
-        const TU_NUMERO_WHATSAPP = "59179712308";
+const API = "/api";
+const TU_NUMERO_WHATSAPP = "59179712308";
 
-        function formatearMensaje(pedido) {
-            let itemsTexto = pedido.items.map(item => 
-                `${item.nombre} × ${item.cantidad} = Bs. ${parseFloat(item.subtotal).toFixed(2)}`
-            ).join("\n");
+function formatearMensaje(pedido) {
+    let itemsTexto = pedido.items.map(function(item) {
+        return item.nombre + " × " + item.cantidad + " = Bs. " + parseFloat(item.subtotal).toFixed(2);
+    }).join("\n");
+    
+    var estadoTexto = pedido.estado === "entregado" ? "✅ Entregado" : "⏳ Pendiente";
+    var ubicacionTexto = pedido.ubicacion ? "\n🗺️ GPS: " + pedido.ubicacion : "";
+    
+    return "🛒 *NUEVO PEDIDO — SALSERO*\n" +
+           "━━━━━━━━━━━━━━━━━━━━\n" +
+           "📋 Pedido #" + pedido.id + "\n" +
+           "👤 Cliente: " + pedido.nombre_cliente + "\n" +
+           "📞 Teléfono: " + pedido.telefono + "\n" +
+           "📍 Dirección: " + pedido.direccion + ubicacionTexto + "\n" +
+           "━━━━━━━━━━━━━━━━━━━━\n" +
+           "📝 ARTÍCULOS:\n" + itemsTexto + "\n" +
+           "━━━━━━━━━━━━━━━━━━━━\n" +
+           "💰 TOTAL: Bs. " + parseFloat(pedido.total).toFixed(2) + "\n" +
+           "⏰ Estado: " + estadoTexto;
+}
+
+function enviarWhatsApp(pedido) {
+    var mensaje = formatearMensaje(pedido);
+    var enlace = "https://wa.me/" + TU_NUMERO_WHATSAPP + "?text=" + encodeURIComponent(mensaje);
+    window.open(enlace, "_blank");
+}
+
+async function cargarPedidos() {
+    const contenedor = document.getElementById("lista-pedidos");
+    try {
+        const res = await fetch(API + "/pedidos");
+        if (!res.ok) throw new Error("Error al cargar");
+        const pedidos = await res.json();
+        
+        if (pedidos.length === 0) {
+            contenedor.innerHTML = '<p class="vacio">📭 No hay pedidos registrados todavía</p>';
+            return;
+        }
+
+        let html = "";
+        pedidos.forEach(function(p) {
+            var esEntregado = p.estado === "entregado";
             
-            return `
-🛒 *NUEVO PEDIDO — SALSERO*
-━━━━━━━━━━━━━━━━━━━━
-📋 Pedido #${pedido.id}
-👤 Cliente: ${pedido.nombre_cliente}
-📞 Teléfono: ${pedido.telefono}
-📍 Dirección: ${pedido.direccion}
-${pedido.ubicacion ? `🗺️ GPS: ${pedido.ubicacion}` : ''}
-━━━━━━━━━━━━━━━━━━━━
-📝 ARTÍCULOS:
-${itemsTexto}
-━━━━━━━━━━━━━━━━━━━━
-💰 TOTAL: Bs. ${parseFloat(pedido.total).toFixed(2)}
-⏰ Estado: ${pedido.estado === 'entregado' ? '✅ Entregado' : '⏳ Pendiente'}
-            `.trim();
+            let itemsHTML = p.items.map(function(item) {
+                return '<div class="item"><span>' + item.nombre + ' × ' + item.cantidad + 
+                       '</span><span>Bs. ' + parseFloat(item.subtotal).toFixed(2) + '</span></div>';
+            }).join("");
+
+            html += '<div class="pedido-card ' + (esEntregado ? 'entregado' : '') + '">' +
+                '<div class="pedido-header">' +
+                    '<span class="pedido-id">#' + p.id + '</span>' +
+                    '<span class="pedido-estado ' + (esEntregado ? 'entregado' : '') + '">' +
+                        (esEntregado ? '✅ Entregado' : '⏳ Pendiente') +
+                    '</span>' +
+                '</div>' +
+                '<div class="pedido-datos">' +
+                    '<div class="dato-group"><h4>Nombre</h4><p>' + p.nombre_cliente + '</p></div>' +
+                    '<div class="dato-group"><h4>Teléfono</h4><p>' + p.telefono + '</p></div>' +
+                    '<div class="dato-group"><h4>Dirección</h4><p>' + p.direccion + '</p></div>' +
+                    (p.ubicacion ? '<div class="dato-group"><h4>Ubicación GPS</h4><p style="font-size:13px; color:#2563eb">' + p.ubicacion + '</p></div>' : '') +
+                '</div>' +
+                '<div class="pedido-items">' +
+                    '<h4 style="margin-bottom:10px; color:#4b5563">🛒 Artículos del Pedido</h4>' +
+                    itemsHTML +
+                    '<div class="item-total"><span>TOTAL</span><span>Bs. ' + parseFloat(p.total).toFixed(2) + '</span></div>' +
+                '</div>' +
+                '<div style="display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:10px;">' +
+                    '<button onclick="enviarWhatsApp(' + p.id + ')" style="background:#25d366; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;">📤 Enviar por WhatsApp</button>' +
+                    (!esEntregado ? '<button class="btn-estado" onclick="marcarEntregado(' + p.id + ')">✅ Marcar Entregado</button>' : '') +
+                    '<button class="btn-eliminar" onclick="eliminarPedido(' + p.id + ')">🗑️ Eliminar</button>' +
+                '</div>' +
+            '</div>';
+        });
+        contenedor.innerHTML = html;
+    } catch (err) {
+        contenedor.innerHTML = '<p style="color:red;text-align:center;padding:40px">❌ Error al cargar los pedidos. Verifica que el servidor esté encendido.</p>';
+        console.error(err);
+    }
+}
+
+async function marcarEntregado(id) {
+    if (!confirm("¿Marcar este pedido como ENTREGADO?")) return;
+    try {
+        const res = await fetch(API + "/pedidos/" + id + "?estado=entregado", {
+            method: "PATCH"
+        });
+        if (res.ok) {
+            alert("✅ Pedido marcado como entregado");
+            cargarPedidos();
         }
+    } catch {
+        alert("❌ No se pudo actualizar");
+    }
+}
 
-        function enviarWhatsApp(pedido) {
-            const mensaje = formatearMensaje(pedido);
-            const enlace = `https://wa.me/${TU_NUMERO_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
-            window.open(enlace, '_blank');
-        }
+async function eliminarPedido(id) {
+    if (!confirm("⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.")) return;
+    alert("Función disponible próximamente — puedes eliminarlo desde datos.json directamente");
+    cargarPedidos();
+}
 
-        async function cargarPedidos() {
-            const contenedor = document.getElementById("lista-pedidos");
-            try {
-                const res = await fetch(`${API}/pedidos`);
-                if (!res.ok) throw new Error("Error al cargar");
-                const pedidos = await res.json();
-                
-                if (pedidos.length === 0) {
-                    contenedor.innerHTML = '<p class="vacio">📭 No hay pedidos registrados todavía</p>';
-                    return;
-                }
-
-                contenedor.innerHTML = "";
-                pedidos.forEach(p => {
-                    const esEntregado = p.estado === "entregado";
-                    const itemsHTML = p.items.map(item => `
-                        <div class="item">
-                            <span>${item.nombre} × ${item.cantidad}</span>
-                            <span>Bs. ${parseFloat(item.subtotal).toFixed(2)}</span>
-                        </div>
-                    `).join("");
-
-                    contenedor.innerHTML += `
-                        <div class="pedido-card ${esEntregado ? 'entregado' : ''}">
-                            <div class="pedido-header">
-                                <span class="pedido-id">#${p.id}</span>
-                                <span class="pedido-estado ${esEntregado ? 'entregado' : ''}">
-                                    ${esEntregado ? '✅ Entregado' : '⏳ Pendiente'}
-                                </span>
-                            </div>
-                            
-                            <div class="pedido-datos">
-                                <div class="dato-group">
-                                    <h4>Nombre</h4>
-                                    <p>${p.nombre_cliente}</p>
-                                </div>
-                                <div class="dato-group">
-                                    <h4>Teléfono</h4>
-                                    <p>${p.telefono}</p>
-                                </div>
-                                <div class="dato-group">
-                                    <h4>Dirección</h4>
-                                    <p>${p.direccion}</p>
-                                </div>
-                                ${p.ubicacion ? `
-                                <div class="dato-group">
-                                    <h4>Ubicación GPS</h4>
-                                    <p style="font-size:13px; color:#2563eb">${p.ubicacion}</p>
-                                </div>
-                                ` : ''}
-                            </div>
-
-                            <div class="pedido-items">
-                                <h4 style="margin-bottom:10px; color:#4b5563">🛒 Artículos del Pedido</h4>
-                                ${itemsHTML}
-                                <div class="item-total">
-                                    <span>TOTAL</span>
-                                    <span>Bs. ${parseFloat(p.total).toFixed(2)}</span>
-                                </div>
-                            </div>
-
-                            <div style="display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:10px;">
-                                <button onclick="enviarWhatsApp(${p.id})" style="background:#25d366; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;">📤 Enviar por WhatsApp</button>
-                                ${!esEntregado ? `
-                                <button class="btn-estado" onclick="marcarEntregado(${p.id})">✅ Marcar Entregado</button>
-                                ` : ''}
-                                <button class="btn-eliminar" onclick="eliminarPedido(${p.id})">🗑️ Eliminar</button>
-                            </div>
-                        </div>
-                    `;
-                });
-            } catch (err) {
-                contenedor.innerHTML = '<p style="color:red;text-align:center;padding:40px">❌ Error al cargar los pedidos. Verifica que el servidor esté encendido.</p>';
-                console.error(err);
-            }
-        }
-
-        async function marcarEntregado(id) {
-            if (!confirm('¿Marcar este pedido como ENTREGADO?')) return;
-            try {
-                const res = await fetch(`${API}/pedidos/${id}?estado=entregado`, {
-                    method: 'PATCH'
-                });
-                if (res.ok) {
-                    alert('✅ Pedido marcado como entregado');
-                    cargarPedidos();
-                }
-            } catch {
-                alert('❌ No se pudo actualizar');
-            }
-        }
-
-        async function eliminarPedido(id) {
-            if (!confirm('⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
-            alert('Función disponible próximamente — puedes eliminarlo desde datos.json directamente');
-        }
-
-        cargarPedidos();
+cargarPedidos();
