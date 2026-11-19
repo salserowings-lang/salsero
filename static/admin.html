@@ -25,6 +25,7 @@
         .item:last-child { border-bottom: none; }
         .item-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #ddd; color: #c01e38; }
         button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; }
+        .btn-whatsapp { background-color: #25d366; color: white; }
         .btn-estado { background-color: #28a745; color: white; }
         .btn-eliminar { background-color: #dc3545; color: white; }
         .refrescar { background-color: #007bff; color: white; margin-bottom: 20px; }
@@ -38,7 +39,6 @@
         <button class="refrescar" onclick="cargarPedidos()">🔄 Refrescar Lista</button>
         <h2>Pedidos Recibidos</h2>
         
-        <!-- ✅ Línea importante: Aquí se mostrarán los pedidos -->
         <div id="lista-pedidos"></div>
     </div>
 
@@ -70,7 +70,10 @@ function formatearMensaje(pedido) {
 function enviarWhatsApp(pedido) {
     var mensaje = formatearMensaje(pedido);
     var enlace = "https://wa.me/" + TU_NUMERO_WHATSAPP + "?text=" + encodeURIComponent(mensaje);
-    window.open(enlace, "_blank");
+    var nuevaVentana = window.open(enlace, "_blank");
+    if (!nuevaVentana) {
+        window.location.href = enlace;
+    }
 }
 
 async function cargarPedidos() {
@@ -113,7 +116,7 @@ async function cargarPedidos() {
                     '<div class="item-total"><span>TOTAL</span><span>Bs. ' + parseFloat(p.total).toFixed(2) + '</span></div>' +
                 '</div>' +
                 '<div style="display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:10px;">' +
-                    '<button onclick="enviarWhatsApp(' + p.id + ')" style="background:#25d366; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;">📤 Enviar por WhatsApp</button>' +
+                    '<button onclick="enviarWhatsApp(' + p.id + ')" class="btn-whatsapp">📤 Enviar por WhatsApp</button>' +
                     (!esEntregado ? '<button class="btn-estado" onclick="marcarEntregado(' + p.id + ')">✅ Marcar Entregado</button>' : '') +
                     '<button class="btn-eliminar" onclick="eliminarPedido(' + p.id + ')">🗑️ Eliminar</button>' +
                 '</div>' +
@@ -141,9 +144,8 @@ async function marcarEntregado(id) {
     }
 }
 
-async function eliminarPedido(id) {
+function eliminarPedido(id) {
     if (!confirm("⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.")) return;
-    alert("Puedes eliminarlo directamente desde el archivo datos.json si lo necesitas");
     cargarPedidos();
 }
 
