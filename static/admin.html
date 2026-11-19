@@ -1,3 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SALSERO — Panel de Control</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background-color: #f9f9f9; }
+        header { background-color: #c01e38; color: white; padding: 24px; text-align: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        h2 { font-size: 20px; margin-bottom: 16px; color: #333; }
+        .vacio { text-align: center; color: #888; padding: 40px; font-size: 18px; }
+        .pedido-card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-left: 4px solid #c01e38; }
+        .pedido-card.entregado { border-left-color: #28a745; opacity: 0.9; }
+        .pedido-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+        .pedido-id { font-size: 18px; font-weight: bold; color: #c01e38; }
+        .pedido-estado { padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600; background-color: #fff3cd; color: #856404; }
+        .pedido-estado.entregado { background-color: #d4edda; color: #155724; }
+        .pedido-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .dato-group h4 { font-size: 13px; color: #666; margin-bottom: 4px; }
+        .dato-group p { font-size: 15px; color: #333; }
+        .pedido-items { background: #f9f9f9; padding: 16px; border-radius: 6px; margin-bottom: 12px; }
+        .item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #ddd; }
+        .item:last-child { border-bottom: none; }
+        .item-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #ddd; color: #c01e38; }
+        button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; }
+        .btn-estado { background-color: #28a745; color: white; }
+        .btn-eliminar { background-color: #dc3545; color: white; }
+        .refrescar { background-color: #007bff; color: white; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🍗 SALSERO — Panel de Control</h1>
+    </header>
+    <div class="container">
+        <button class="refrescar" onclick="cargarPedidos()">🔄 Refrescar Lista</button>
+        <h2>Pedidos Recibidos</h2>
+        
+        <!-- ✅ Línea importante: Aquí se mostrarán los pedidos -->
+        <div id="lista-pedidos"></div>
+    </div>
+
+<script>
 const API = "/api";
 const TU_NUMERO_WHATSAPP = "59179712308";
 
@@ -51,7 +96,7 @@ async function cargarPedidos() {
 
             html += '<div class="pedido-card ' + (esEntregado ? 'entregado' : '') + '">' +
                 '<div class="pedido-header">' +
-                    '<span class="pedido-id">#' + p.id + '</span>' +
+                    '<span class="pedido-id">Pedido #' + p.id + '</span>' +
                     '<span class="pedido-estado ' + (esEntregado ? 'entregado' : '') + '">' +
                         (esEntregado ? '✅ Entregado' : '⏳ Pendiente') +
                     '</span>' +
@@ -63,7 +108,7 @@ async function cargarPedidos() {
                     (p.ubicacion ? '<div class="dato-group"><h4>Ubicación GPS</h4><p style="font-size:13px; color:#2563eb">' + p.ubicacion + '</p></div>' : '') +
                 '</div>' +
                 '<div class="pedido-items">' +
-                    '<h4 style="margin-bottom:10px; color:#4b5563">🛒 Artículos del Pedido</h4>' +
+                    '<h4 style="margin-bottom:10px; color:#4b5563">Artículos del Pedido</h4>' +
                     itemsHTML +
                     '<div class="item-total"><span>TOTAL</span><span>Bs. ' + parseFloat(p.total).toFixed(2) + '</span></div>' +
                 '</div>' +
@@ -98,8 +143,11 @@ async function marcarEntregado(id) {
 
 async function eliminarPedido(id) {
     if (!confirm("⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.")) return;
-    alert("Función disponible próximamente — puedes eliminarlo desde datos.json directamente");
+    alert("Puedes eliminarlo directamente desde el archivo datos.json si lo necesitas");
     cargarPedidos();
 }
 
 cargarPedidos();
+</script>
+</body>
+</html>
