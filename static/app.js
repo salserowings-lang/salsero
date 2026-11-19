@@ -1,4 +1,4 @@
-const API = "";
+const API = "/api";
 let productos = [];
 let carrito = [];
 let coordenadas = { lat: null, lng: null };
@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", cargarProductos);
 async function cargarProductos() {
     try {
         const res = await fetch(`${API}/productos`);
+        if (!res.ok) throw new Error("Error al cargar");
         productos = await res.json();
         mostrarProductos();
     } catch {
@@ -25,7 +26,7 @@ function mostrarProductos() {
         : productos.filter(p => p.categoria === categoriaActiva);
 
     if (filtrados.length === 0) {
-        contenedor.innerHTML = "<p style='grid-column:1/-1;text-align:center;color:#777;'>No hay productos en esta categoría</p>";
+        contenedor.innerHTML = "<p style='grid-column:1/-1;text-align:center;color:#777;'>No hay productos disponibles</p>";
         return;
     }
 
@@ -33,7 +34,7 @@ function mostrarProductos() {
         const sinStock = p.stock <= 0;
         contenedor.innerHTML += `
             <div class="tarjeta ${sinStock ? 'sin-stock' : ''}">
-                <img src="img/${p.imagen || ''}" alt="${p.nombre}" onerror="this.src='https://via.placeholder.com/300x160?text=SALSERO'">
+                <img src="static/${p.imagen || ''}" alt="${p.nombre}" onerror="this.src='https://via.placeholder.com/300x160?text=SALSERO'">
                 <div class="info">
                     <h3>${p.nombre}</h3>
                     <p>${p.descripcion || ''}</p>
@@ -160,23 +161,15 @@ async function enviarPedido() {
 
     const items = carrito.map(i => ({
         producto_id: i.producto_id,
-        nombre: i.nombre,
-        cantidad: i.cantidad,
-        precio_unitario: i.precio_unitario,
-        subtotal: (parseFloat(i.precio_unitario) * i.cantidad).toFixed(2)
+        cantidad: i.cantidad
     }));
-
-    const total = items.reduce((s, i) => s + parseFloat(i.subtotal), 0);
 
     const pedido = {
         nombre_cliente: nombre,
         telefono: telefono,
         direccion: direccion,
-        referencia: referencia,
-        latitud: coordenadas.lat,
-        longitud: coordenadas.lng,
-        items: items,
-        total: total.toFixed(2)
+        ubicacion: referencia + (coordenadas.lat ? ` (${coordenadas.lat}, ${coordenadas.lng})` : ""),
+        items: items
     };
 
     try {
