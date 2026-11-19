@@ -25,7 +25,7 @@
         .item:last-child { border-bottom: none; }
         .item-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #ddd; color: #c01e38; }
         .botonera { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        button { padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; }
+        button, .btn-link { padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; text-decoration: none; display: inline-block; text-align: center; }
         .btn-whatsapp { background-color: #25d366; color: white; }
         .btn-estado { background-color: #28a745; color: white; }
         .btn-eliminar { background-color: #dc3545; color: white; }
@@ -64,12 +64,7 @@ function armarMensaje(pedido) {
     lineas.push("");
     lineas.push("TOTAL: Bs. " + pedido.total.toFixed(2));
     lineas.push("ESTADO: " + (pedido.estado === "entregado" ? "Entregado" : "Pendiente"));
-    return lineas.join("%0A");
-}
-
-function enviarWhatsAppDirecto(pedido) {
-    var texto = armarMensaje(pedido);
-    window.location.href = "https://wa.me/" + TELEFONO + "?text=" + texto;
+    return encodeURIComponent(lineas.join("\n"));
 }
 
 async function cargarPedidos() {
@@ -87,6 +82,8 @@ async function cargarPedidos() {
         let html = "";
         pedidos.forEach(function(p) {
             var esEntregado = p.estado === "entregado";
+            var mensaje = armarMensaje(p);
+            var enlaceWA = "https://wa.me/" + TELEFONO + "?text=" + mensaje;
             
             let itemsHTML = "";
             p.items.forEach(function(item) {
@@ -113,8 +110,7 @@ async function cargarPedidos() {
                     '<div class="item-total"><span>TOTAL</span><span>Bs. ' + p.total.toFixed(2) + '</span></div>' +
                 '</div>' +
                 '<div class="botonera">' +
-                    '<a href="https://wa.me/' + TELEFONO + '?text=' + armarMensaje(p) + 
-                    '" target="_blank" class="btn-whatsapp" style="display:inline-block;padding:10px 16px;background:#25d366;color:white;border-radius:6px;text-decoration:none;font-weight:bold;margin-right:8px;">📤 Enviar por WhatsApp</a>' +
+                    '<a href="' + enlaceWA + '" class="btn-link btn-whatsapp">📤 Enviar por WhatsApp</a>' +
                     (!esEntregado ? '<button class="btn-estado" onclick="marcarEntregado(' + p.id + ')">✅ Marcar Entregado</button>' : '') +
                     '<button class="btn-eliminar" onclick="eliminarPedido(' + p.id + ')">🗑️ Eliminar</button>' +
                 '</div>' +
