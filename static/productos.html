@@ -43,7 +43,9 @@
     <script>
         async function cargarProductos() {
             try {
-                const res = await fetch('/productos');
+                // ✅ Corregida la ruta: ahora apunta a /api/productos
+                const res = await fetch('/api/productos');
+                if (!res.ok) throw new Error('Error en la respuesta');
                 const productos = await res.json();
                 const tbody = document.getElementById('listaProductos');
                 
@@ -54,16 +56,19 @@
 
                 tbody.innerHTML = '';
                 productos.forEach(p => {
+                    // Convertimos el precio a número por si viene como texto
+                    const precioNum = parseFloat(p.precio || 0).toFixed(2);
                     tbody.innerHTML += `
                         <tr>
                             <td><strong>${p.id}</strong></td>
                             <td><strong>${p.nombre}</strong></td>
                             <td>${p.descripcion || '-'}</td>
-                            <td class="precio">Bs. ${p.precio}</td>
+                            <td class="precio">Bs. ${precioNum}</td>
                         </tr>
                     `;
                 });
             } catch (err) {
+                console.error('Error:', err);
                 document.getElementById('listaProductos').innerHTML = 
                     '<tr><td colspan="4" style="color:red;text-align:center;padding:20px">Error al cargar productos</td></tr>';
             }
