@@ -30,6 +30,7 @@
         .btn-estado { background-color: #28a745; color: white; }
         .btn-eliminar { background-color: #dc3545; color: white; }
         .refrescar { background-color: #007bff; color: white; margin-bottom: 20px; }
+        .aviso { font-size: 12px; color: #666; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -83,7 +84,7 @@ async function cargarPedidos() {
         pedidos.forEach(function(p) {
             var esEntregado = p.estado === "entregado";
             var mensaje = armarMensaje(p);
-            var enlaceWA = "https://wa.me/" + TELEFONO + "?text=" + mensaje;
+            var enlaceWA = "whatsapp://send?phone=" + TELEFONO + "&text=" + mensaje;
             
             let itemsHTML = "";
             p.items.forEach(function(item) {
@@ -110,10 +111,11 @@ async function cargarPedidos() {
                     '<div class="item-total"><span>TOTAL</span><span>Bs. ' + p.total.toFixed(2) + '</span></div>' +
                 '</div>' +
                 '<div class="botonera">' +
-                    '<a href="' + enlaceWA + '" class="btn-link btn-whatsapp">📤 Enviar por WhatsApp</a>' +
+                    '<a href="' + enlaceWA + '" class="btn-link btn-whatsapp">📤 Abrir en WhatsApp</a>' +
                     (!esEntregado ? '<button class="btn-estado" onclick="marcarEntregado(' + p.id + ')">✅ Marcar Entregado</button>' : '') +
                     '<button class="btn-eliminar" onclick="eliminarPedido(' + p.id + ')">🗑️ Eliminar</button>' +
                 '</div>' +
+                '<p class="aviso">💡 Si pregunta: "¿Abrir WhatsApp?" → elige Sí/Abrir</p>' +
             '</div>';
         });
         contenedor.innerHTML = html;
