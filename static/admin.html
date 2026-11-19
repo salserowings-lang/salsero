@@ -69,11 +69,9 @@ function formatearMensaje(pedido) {
 
 function enviarWhatsApp(pedido) {
     var mensaje = formatearMensaje(pedido);
-    var enlace = "https://wa.me/" + TU_NUMERO_WHATSAPP + "?text=" + encodeURIComponent(mensaje);
-    var nuevaVentana = window.open(enlace, "_blank");
-    if (!nuevaVentana) {
-        window.location.href = enlace;
-    }
+    var numeroLimpio = TU_NUMERO_WHATSAPP.replace(/\D/g, '');
+    var enlace = "https://wa.me/" + numeroLimpio + "?text=" + encodeURIComponent(mensaje);
+    window.location.href = enlace;
 }
 
 async function cargarPedidos() {
