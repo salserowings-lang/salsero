@@ -1,4 +1,33 @@
         const API = "/api";
+        const TU_NUMERO_WHATSAPP = "59179712308";
+
+        function formatearMensaje(pedido) {
+            let itemsTexto = pedido.items.map(item => 
+                `${item.nombre} × ${item.cantidad} = Bs. ${parseFloat(item.subtotal).toFixed(2)}`
+            ).join("\n");
+            
+            return `
+🛒 *NUEVO PEDIDO — SALSERO*
+━━━━━━━━━━━━━━━━━━━━
+📋 Pedido #${pedido.id}
+👤 Cliente: ${pedido.nombre_cliente}
+📞 Teléfono: ${pedido.telefono}
+📍 Dirección: ${pedido.direccion}
+${pedido.ubicacion ? `🗺️ GPS: ${pedido.ubicacion}` : ''}
+━━━━━━━━━━━━━━━━━━━━
+📝 ARTÍCULOS:
+${itemsTexto}
+━━━━━━━━━━━━━━━━━━━━
+💰 TOTAL: Bs. ${parseFloat(pedido.total).toFixed(2)}
+⏰ Estado: ${pedido.estado === 'entregado' ? '✅ Entregado' : '⏳ Pendiente'}
+            `.trim();
+        }
+
+        function enviarWhatsApp(pedido) {
+            const mensaje = formatearMensaje(pedido);
+            const enlace = `https://wa.me/${TU_NUMERO_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+            window.open(enlace, '_blank');
+        }
 
         async function cargarPedidos() {
             const contenedor = document.getElementById("lista-pedidos");
@@ -61,7 +90,8 @@
                                 </div>
                             </div>
 
-                            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                            <div style="display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:10px;">
+                                <button onclick="enviarWhatsApp(${p.id})" style="background:#25d366; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;">📤 Enviar por WhatsApp</button>
                                 ${!esEntregado ? `
                                 <button class="btn-estado" onclick="marcarEntregado(${p.id})">✅ Marcar Entregado</button>
                                 ` : ''}
