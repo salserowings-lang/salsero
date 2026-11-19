@@ -58,7 +58,7 @@
         <div id="items-carrito">
             <p class="vacio">Tu carrito está vacío</p>
         </div>
-        <div class="total">Total: Bs. <span id="total">0,00</span></div>
+        <div class="total">Total: Bs. <span id="total">0.00</span></div>
     </section>
 
     <!-- DATOS DE ENVÍO -->
@@ -66,7 +66,7 @@
         <h2>Datos de Envío</h2>
         <form id="form-pedido">
             <label>Nombre Completo *</label>
-            <input type="text" id="nombre" required>
+            <input type="text" id="nombre_cliente" required>
             
             <label>CI / NIT *</label>
             <input type="text" id="ci_nit" required>
@@ -89,15 +89,18 @@
     </section>
 
     <script>
+        const API = "/api";
         let productos = [];
         let carrito = [];
 
         async function cargarProductos() {
             try {
-                const res = await fetch('/productos');
+                const res = await fetch(`${API}/productos`);
+                if (!res.ok) throw new Error("Error en la respuesta");
                 productos = await res.json();
                 mostrarProductos();
             } catch (err) {
+                console.error("Error:", err);
                 document.getElementById('lista-productos').innerHTML = 
                     '<p style="color:red;text-align:center">Error al cargar productos</p>';
             }
@@ -107,11 +110,12 @@
             const contenedor = document.getElementById('lista-productos');
             contenedor.innerHTML = '';
             productos.forEach(p => {
+                const precio = parseFloat(p.precio || 0);
                 contenedor.innerHTML += `
                     <div class="producto">
                         <h3>${p.nombre}</h3>
                         <p class="desc">${p.descripcion || ''}</p>
-                        <p class="precio">Bs. ${p.precio}</p>
+                        <p class="precio">Bs. ${precio.toFixed(2)}</p>
                         <button class="btn btn-agregar" onclick="agregarAlCarrito(${p.id})">Agregar al carrito</button>
                     </div>
                 `;
@@ -119,14 +123,25 @@
         }
 
         function agregarAlCarrito(id) {
-            const existe = carrito.find(i => i.id === id);
-            if (existe) existe.cantidad++;
-            else carrito.push({ id, cantidad: 1 });
+            const existe = carrito.find(i => i.producto_id === id);
+            const prod = productos.find(p => p.id === id);
+            if (!prod) return;
+            
+            if (existe) {
+                existe.cantidad++;
+            } else {
+                carrito.push({ 
+                    producto_id: id, 
+                    nombre: prod.nombre,
+                    precio_unitario: parseFloat(prod.precio || 0),
+                    cantidad: 1 
+                });
+            }
             actualizarCarrito();
         }
 
         function quitarDelCarrito(id) {
-            const idx = carrito.findIndex(i => i.id === id);
+            const idx = carrito.findIndex(i => i.producto_id === id);
             if (idx !== -1) {
                 carrito[idx].cantidad--;
                 if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
@@ -141,25 +156,24 @@
 
             if (carrito.length === 0) {
                 contenedor.innerHTML = '<p class="vacio">Tu carrito está vacío</p>';
-                elemTotal.textContent = '0,00';
+                elemTotal.textContent = '0.00';
                 return;
             }
 
             contenedor.innerHTML = '';
             carrito.forEach(item => {
-                const prod = productos.find(p => p.id === item.id);
-                const subtotal = parseFloat(prod.precio) * item.cantidad;
+                const subtotal = item.precio_unitario * item.cantidad;
                 total += subtotal;
                 contenedor.innerHTML += `
                     <div class="item-carrito">
                         <div>
-                            <strong>${prod.nombre}</strong><br>
-                            Bs. ${prod.precio} c/u
+                            <strong>${item.nombre}</strong><br>
+                            Bs. ${item.precio_unitario.toFixed(2)} c/u
                         </div>
                         <div class="cantidad">
-                            <button onclick="quitarDelCarrito(${item.id})">−</button>
+                            <button onclick="quitarDelCarrito(${item.producto_id})">−</button>
                             <span>${item.cantidad}</span>
-                            <button onclick="agregarAlCarrito(${item.id})">+</button>
+                            <button onclick="agregarAlCarrito(${item.producto_id})">+</button>
                             <span style="margin-left:10px; font-weight:bold">Bs. ${subtotal.toFixed(2)}</span>
                         </div>
                     </div>
@@ -216,28 +230,35 @@
                 return;
             }
 
+            const itemsParaEnviar = carrito.map(i => ({
+                producto_id: i.producto_id,
+                cantidad: i.cantidad
+            }));
+
             const pedido = {
-                nombre: document.getElementById('nombre').value,
-                ci_nit: document.getElementById('ci_nit').value,
+                nombre_cliente: document.getElementById('nombre_cliente').value,
                 telefono: document.getElementById('telefono').value,
                 direccion: document.getElementById('direccion').value,
-                ubicacion_gps: document.getElementById('ubicacion_gps').value || '',
-                items: carrito
+                ubicacion: document.getElementById('ubicacion_gps').value || '',
+                items: itemsParaEnviar
             };
 
             try {
-                const res = await fetch('/pedidos', {
+                const res = await fetch(`${API}/pedidos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(pedido)
                 });
+                
+                if (!res.ok) throw await res.json();
                 const resultado = await res.json();
-                alert(`✅ ¡Pedido enviado con éxito!\nNúmero de pedido: #${resultado.id}`);
+                alert(`✅ ¡Pedido enviado con éxito!\n${resultado.mensaje || ''}`);
                 carrito = [];
                 actualizarCarrito();
                 e.target.reset();
             } catch (err) {
-                alert('❌ Error al enviar el pedido. Verifica que el servidor esté encendido.');
+                alert('❌ Error al enviar el pedido. Intenta de nuevo.');
+                console.error(err);
             }
         });
 
