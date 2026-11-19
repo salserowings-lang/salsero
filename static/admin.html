@@ -1,187 +1,99 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SALSERO — Panel de Control</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f8f9fa; max-width: 1000px; margin: 0 auto; padding: 20px; }
-        header { background: #dc2626; color: white; padding: 25px; border-radius: 10px; text-align: center; margin-bottom: 30px; }
-        h1 { font-size: 28px; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
-        .tab { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 500; }
-        .tab.activa { background: #dc2626; color: white; }
-        .tab.inactiva { background: #e5e7eb; color: #374151; }
-        .btn-refrescar { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin-bottom: 20px; font-size: 14px; }
-        .pedido { background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .pedido-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .pedido-id { font-size: 18px; font-weight: bold; color: #1f2937; }
-        .estado { padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500; }
-        .estado.pendiente { background: #fef3c7; color: #92400e; }
-        .entrega { margin: 10px 0; color: #4b5563; font-size: 14px; }
-        .gps { font-family: monospace; background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
-        .acciones { display: flex; gap: 8px; margin-top: 15px; }
-        .btn { padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: 500; }
-        .btn-entregado { background: #16a34a; color: white; }
-        .btn-camino { background: #2563eb; color: white; }
-        .btn-eliminar { background: #ef4444; color: white; }
-        .vacio { text-align: center; color: #6b7280; padding: 40px; font-size: 16px; }
-        .total { margin-top: 10px; font-size: 17px; font-weight: bold; color: #1f2937; }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>🍗 SALSERO — Panel de Control</h1>
-        <p>Gestión de Pedidos</p>
-    </header>
+        const API = "/api";
 
-    <div class="tabs">
-        <button class="tab activa" id="tab-pedidos">📋 Pedidos Recibidos</button>
-        <button class="tab inactiva" id="tab-stock">📦 Inventario</button>
-    </div>
+        async function cargarPedidos() {
+            const contenedor = document.getElementById("lista-pedidos");
+            try {
+                const res = await fetch(`${API}/pedidos`);
+                if (!res.ok) throw new Error("Error al cargar");
+                const pedidos = await res.json();
+                
+                if (pedidos.length === 0) {
+                    contenedor.innerHTML = '<p class="vacio">📭 No hay pedidos registrados todavía</p>';
+                    return;
+                }
 
-    <button class="btn-refrescar" onclick="cargarPedidos()">🔄 Refrescar Lista</button>
+                contenedor.innerHTML = "";
+                pedidos.forEach(p => {
+                    const esEntregado = p.estado === "entregado";
+                    const itemsHTML = p.items.map(item => `
+                        <div class="item">
+                            <span>${item.nombre} × ${item.cantidad}</span>
+                            <span>Bs. ${parseFloat(item.subtotal).toFixed(2)}</span>
+                        </div>
+                    `).join("");
 
-    <div id="contenido-pedidos">
-        <div id="lista-pedidos">
-            <p class="vacio">Cargando pedidos...</p>
-        </div>
-    </div>
+                    contenedor.innerHTML += `
+                        <div class="pedido-card ${esEntregado ? 'entregado' : ''}">
+                            <div class="pedido-header">
+                                <span class="pedido-id">#${p.id}</span>
+                                <span class="pedido-estado ${esEntregado ? 'entregado' : ''}">
+                                    ${esEntregado ? '✅ Entregado' : '⏳ Pendiente'}
+                                </span>
+                            </div>
+                            
+                            <div class="pedido-datos">
+                                <div class="dato-group">
+                                    <h4>Nombre</h4>
+                                    <p>${p.nombre_cliente}</p>
+                                </div>
+                                <div class="dato-group">
+                                    <h4>Teléfono</h4>
+                                    <p>${p.telefono}</p>
+                                </div>
+                                <div class="dato-group">
+                                    <h4>Dirección</h4>
+                                    <p>${p.direccion}</p>
+                                </div>
+                                ${p.ubicacion ? `
+                                <div class="dato-group">
+                                    <h4>Ubicación GPS</h4>
+                                    <p style="font-size:13px; color:#2563eb">${p.ubicacion}</p>
+                                </div>
+                                ` : ''}
+                            </div>
 
-    <div id="contenido-stock" style="display:none;">
-        <h2>Inventario — Próximamente</h2>
-        <p>Aquí podrás gestionar tu stock de productos.</p>
-    </div>
+                            <div class="pedido-items">
+                                <h4 style="margin-bottom:10px; color:#4b5563">🛒 Artículos del Pedido</h4>
+                                ${itemsHTML}
+                                <div class="item-total">
+                                    <span>TOTAL</span>
+                                    <span>Bs. ${parseFloat(p.total).toFixed(2)}</span>
+                                </div>
+                            </div>
 
-<script>
-// ===== CAMBIAR PESTAÑAS =====
-document.getElementById('tab-pedidos').addEventListener('click', function() {
-    this.className = 'tab activa';
-    document.getElementById('tab-stock').className = 'tab inactiva';
-    document.getElementById('contenido-pedidos').style.display = 'block';
-    document.getElementById('contenido-stock').style.display = 'none';
-});
-
-document.getElementById('tab-stock').addEventListener('click', function() {
-    this.className = 'tab activa';
-    document.getElementById('tab-pedidos').className = 'tab inactiva';
-    document.getElementById('contenido-stock').style.display = 'block';
-    document.getElementById('contenido-pedidos').style.display = 'none';
-});
-
-let productos = [];
-
-async function cargarProductos() {
-    try {
-        const res = await fetch('/productos');
-        productos = await res.json();
-    } catch (err) {
-        console.error('Error cargando productos');
-    }
-}
-
-function formatearFecha(texto) {
-    if (!texto) return 'Sin fecha';
-    try {
-        const fecha = new Date(texto);
-        return fecha.toLocaleString('es-BO', {
-            year: 'numeric', month: 'long', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
-    } catch {
-        return texto;
-    }
-}
-
-function obtenerNombreProducto(id) {
-    const p = productos.find(x => x.id === id);
-    return p ? p.nombre : `Producto #${id}`;
-}
-
-function calcularTotal(items) {
-    let total = 0;
-    items.forEach(item => {
-        const p = productos.find(x => x.id === item.id);
-        if (p) total += parseFloat(p.precio) * item.cantidad;
-    });
-    return total.toFixed(2);
-}
-
-async function cargarPedidos() {
-    const contenedor = document.getElementById('lista-pedidos');
-    contenedor.innerHTML = '<p class="vacio">Cargando pedidos...</p>';
-    
-    try {
-        const res = await fetch('/pedidos');
-        const pedidos = await res.json();
-        
-        if (!pedidos || pedidos.length === 0) {
-            contenedor.innerHTML = '<p class="vacio">📭 No hay pedidos registrados aún</p>';
-            return;
-        }
-        
-        pedidos.sort((a, b) => b.id - a.id);
-        contenedor.innerHTML = '';
-        
-        pedidos.forEach(pedido => {
-            const total = calcularTotal(pedido.items || []);
-            contenedor.innerHTML += `
-                <div class="pedido">
-                    <div class="pedido-header">
-                        <span class="pedido-id">Pedido #${pedido.id} — ${pedido.nombre}</span>
-                        <span class="estado ${pedido.estado || 'pendiente'}">${(pedido.estado || 'pendiente').charAt(0).toUpperCase() + (pedido.estado || 'pendiente').slice(1)}</span>
-                    </div>
-                    <p><strong>Fecha:</strong> ${formatearFecha(pedido.fecha)}</p>
-                    <p><strong>CI/NIT:</strong> ${pedido.ci_nit}</p>
-                    <p><strong>Teléfono:</strong> ${pedido.telefono}</p>
-                    <p class="entrega"><strong>Dirección:</strong> ${pedido.direccion}</p>
-                    ${pedido.ubicacion_gps ? `<p class="entrega"><strong>📍 GPS:</strong> <span class="gps">${pedido.ubicacion_gps}</span></p>` : ''}
-                    <div style="margin:12px 0;">
-                        <strong>Artículos:</strong>
-                        <ul style="margin-top:6px; padding-left:20px;">
-                            ${(pedido.items || []).map(i => `<li>${i.cantidad}x ${obtenerNombreProducto(i.id)}</li>`).join('')}
-                        </ul>
-                    </div>
-                    <p class="total">Total: Bs. ${total}</p>
-                    <div class="acciones">
-                        <button class="btn btn-camino" onclick="cambiarEstado(${pedido.id}, 'encamino')">🚚 En camino</button>
-                        <button class="btn btn-entregado" onclick="cambiarEstado(${pedido.id}, 'entregado')">✅ Entregado</button>
-                        <button class="btn btn-eliminar" onclick="eliminarPedido(${pedido.id})">🗑️ Eliminar</button>
-                    </div>
-                </div>
-            `;
-        });
-    } catch (err) {
-        contenedor.innerHTML = '<p class="vacio" style="color:red;">❌ Error al cargar pedidos. Verifica que el servidor esté encendido.</p>';
-    }
-}
-
-async function cambiarEstado(id, nuevoEstado) {
-    alert(`Estado del pedido #${id} cambiado a: ${nuevoEstado}`);
-    cargarPedidos();
-}
-
-async function eliminarPedido(id) {
-    if (confirm(`¿Seguro que deseas eliminar el pedido #${id}? Esta acción no se puede deshacer.`)) {
-        try {
-            const res = await fetch(`/pedidos/${id}`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                alert(`✅ Pedido #${id} eliminado correctamente`);
-                cargarPedidos();
-            } else {
-                alert('❌ No se pudo eliminar el pedido');
+                            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                                ${!esEntregado ? `
+                                <button class="btn-estado" onclick="marcarEntregado(${p.id})">✅ Marcar Entregado</button>
+                                ` : ''}
+                                <button class="btn-eliminar" onclick="eliminarPedido(${p.id})">🗑️ Eliminar</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                contenedor.innerHTML = '<p style="color:red;text-align:center;padding:40px">❌ Error al cargar los pedidos. Verifica que el servidor esté encendido.</p>';
+                console.error(err);
             }
-        } catch (err) {
-            alert('❌ Error de conexión con el servidor');
         }
-    }
-}
 
-cargarProductos().then(() => cargarPedidos());
-</script>
-</body>
-</html>
+        async function marcarEntregado(id) {
+            if (!confirm('¿Marcar este pedido como ENTREGADO?')) return;
+            try {
+                const res = await fetch(`${API}/pedidos/${id}?estado=entregado`, {
+                    method: 'PATCH'
+                });
+                if (res.ok) {
+                    alert('✅ Pedido marcado como entregado');
+                    cargarPedidos();
+                }
+            } catch {
+                alert('❌ No se pudo actualizar');
+            }
+        }
 
+        async function eliminarPedido(id) {
+            if (!confirm('⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.')) return;
+            alert('Función disponible próximamente — puedes eliminarlo desde datos.json directamente');
+        }
+
+        cargarPedidos();
