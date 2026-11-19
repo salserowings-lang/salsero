@@ -24,7 +24,8 @@
         .item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #ddd; }
         .item:last-child { border-bottom: none; }
         .item-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 17px; margin-top: 10px; padding-top: 10px; border-top: 2px solid #ddd; color: #c01e38; }
-        button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; }
+        .botonera { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        button { padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; border: none; }
         .btn-whatsapp { background-color: #25d366; color: white; }
         .btn-estado { background-color: #28a745; color: white; }
         .btn-eliminar { background-color: #dc3545; color: white; }
@@ -44,41 +45,38 @@
 
 <script>
 const API = "/api";
-const TU_NUMERO_WHATSAPP = "59179712308";
+const TELEFONO = "59179712308";
 
-function formatearMensaje(pedido) {
-    let itemsTexto = pedido.items.map(function(item) {
-        return item.nombre + " × " + item.cantidad + " = Bs. " + parseFloat(item.subtotal).toFixed(2);
-    }).join("\n");
-    
-    var estadoTexto = pedido.estado === "entregado" ? "✅ Entregado" : "⏳ Pendiente";
-    var ubicacionTexto = pedido.ubicacion ? "\n🗺️ GPS: " + pedido.ubicacion : "";
-    
-    return "🛒 *NUEVO PEDIDO — SALSERO*\n" +
-           "━━━━━━━━━━━━━━━━━━━━\n" +
-           "📋 Pedido #" + pedido.id + "\n" +
-           "👤 Cliente: " + pedido.nombre_cliente + "\n" +
-           "📞 Teléfono: " + pedido.telefono + "\n" +
-           "📍 Dirección: " + pedido.direccion + ubicacionTexto + "\n" +
-           "━━━━━━━━━━━━━━━━━━━━\n" +
-           "📝 ARTÍCULOS:\n" + itemsTexto + "\n" +
-           "━━━━━━━━━━━━━━━━━━━━\n" +
-           "💰 TOTAL: Bs. " + parseFloat(pedido.total).toFixed(2) + "\n" +
-           "⏰ Estado: " + estadoTexto;
+function armarMensaje(pedido) {
+    let lineas = [];
+    lineas.push("🛒 NUEVO PEDIDO - SALSERO");
+    lineas.push("========================");
+    lineas.push("PEDIDO N°: " + pedido.id);
+    lineas.push("CLIENTE: " + pedido.nombre_cliente);
+    lineas.push("TELÉFONO: " + pedido.telefono);
+    lineas.push("DIRECCIÓN: " + pedido.direccion);
+    if (pedido.ubicacion) lineas.push("GPS: " + pedido.ubicacion);
+    lineas.push("");
+    lineas.push("ARTÍCULOS:");
+    pedido.items.forEach(function(item) {
+        lineas.push(item.nombre + " x" + item.cantidad + " = Bs. " + item.subtotal.toFixed(2));
+    });
+    lineas.push("");
+    lineas.push("TOTAL: Bs. " + pedido.total.toFixed(2));
+    lineas.push("ESTADO: " + (pedido.estado === "entregado" ? "Entregado" : "Pendiente"));
+    return lineas.join("%0A");
 }
 
-function enviarWhatsApp(pedido) {
-    var mensaje = formatearMensaje(pedido);
-    var numeroLimpio = TU_NUMERO_WHATSAPP.replace(/\D/g, '');
-    var enlace = "https://wa.me/" + numeroLimpio + "?text=" + encodeURIComponent(mensaje);
-    window.location.href = enlace;
+function enviarWhatsAppDirecto(pedido) {
+    var texto = armarMensaje(pedido);
+    window.location.href = "https://wa.me/" + TELEFONO + "?text=" + texto;
 }
 
 async function cargarPedidos() {
     const contenedor = document.getElementById("lista-pedidos");
     try {
         const res = await fetch(API + "/pedidos");
-        if (!res.ok) throw new Error("Error al cargar");
+        if (!res.ok) throw new Error("Error");
         const pedidos = await res.json();
         
         if (pedidos.length === 0) {
@@ -90,10 +88,11 @@ async function cargarPedidos() {
         pedidos.forEach(function(p) {
             var esEntregado = p.estado === "entregado";
             
-            let itemsHTML = p.items.map(function(item) {
-                return '<div class="item"><span>' + item.nombre + ' × ' + item.cantidad + 
-                       '</span><span>Bs. ' + parseFloat(item.subtotal).toFixed(2) + '</span></div>';
-            }).join("");
+            let itemsHTML = "";
+            p.items.forEach(function(item) {
+                itemsHTML += '<div class="item"><span>' + item.nombre + ' × ' + item.cantidad + 
+                             '</span><span>Bs. ' + item.subtotal.toFixed(2) + '</span></div>';
+            });
 
             html += '<div class="pedido-card ' + (esEntregado ? 'entregado' : '') + '">' +
                 '<div class="pedido-header">' +
@@ -106,15 +105,16 @@ async function cargarPedidos() {
                     '<div class="dato-group"><h4>Nombre</h4><p>' + p.nombre_cliente + '</p></div>' +
                     '<div class="dato-group"><h4>Teléfono</h4><p>' + p.telefono + '</p></div>' +
                     '<div class="dato-group"><h4>Dirección</h4><p>' + p.direccion + '</p></div>' +
-                    (p.ubicacion ? '<div class="dato-group"><h4>Ubicación GPS</h4><p style="font-size:13px; color:#2563eb">' + p.ubicacion + '</p></div>' : '') +
+                    (p.ubicacion ? '<div class="dato-group"><h4>Ubicación GPS</h4><p>' + p.ubicacion + '</p></div>' : '') +
                 '</div>' +
                 '<div class="pedido-items">' +
-                    '<h4 style="margin-bottom:10px; color:#4b5563">Artículos del Pedido</h4>' +
+                    '<h4 style="margin-bottom:8px;">Artículos del Pedido</h4>' +
                     itemsHTML +
-                    '<div class="item-total"><span>TOTAL</span><span>Bs. ' + parseFloat(p.total).toFixed(2) + '</span></div>' +
+                    '<div class="item-total"><span>TOTAL</span><span>Bs. ' + p.total.toFixed(2) + '</span></div>' +
                 '</div>' +
-                '<div style="display:flex; justify-content:flex-end; flex-wrap:wrap; gap:8px; margin-top:10px;">' +
-                    '<button onclick="enviarWhatsApp(' + p.id + ')" class="btn-whatsapp">📤 Enviar por WhatsApp</button>' +
+                '<div class="botonera">' +
+                    '<a href="https://wa.me/' + TELEFONO + '?text=' + armarMensaje(p) + 
+                    '" target="_blank" class="btn-whatsapp" style="display:inline-block;padding:10px 16px;background:#25d366;color:white;border-radius:6px;text-decoration:none;font-weight:bold;margin-right:8px;">📤 Enviar por WhatsApp</a>' +
                     (!esEntregado ? '<button class="btn-estado" onclick="marcarEntregado(' + p.id + ')">✅ Marcar Entregado</button>' : '') +
                     '<button class="btn-eliminar" onclick="eliminarPedido(' + p.id + ')">🗑️ Eliminar</button>' +
                 '</div>' +
@@ -122,28 +122,21 @@ async function cargarPedidos() {
         });
         contenedor.innerHTML = html;
     } catch (err) {
-        contenedor.innerHTML = '<p style="color:red;text-align:center;padding:40px">❌ Error al cargar los pedidos. Verifica que el servidor esté encendido.</p>';
+        contenedor.innerHTML = '<p style="color:red;text-align:center;padding:40px">❌ Error al cargar los pedidos</p>';
         console.error(err);
     }
 }
 
 async function marcarEntregado(id) {
-    if (!confirm("¿Marcar este pedido como ENTREGADO?")) return;
+    if (!confirm("¿Marcar como ENTREGADO?")) return;
     try {
-        const res = await fetch(API + "/pedidos/" + id + "?estado=entregado", {
-            method: "PATCH"
-        });
-        if (res.ok) {
-            alert("✅ Pedido marcado como entregado");
-            cargarPedidos();
-        }
-    } catch {
-        alert("❌ No se pudo actualizar");
-    }
+        await fetch(API + "/pedidos/" + id + "?estado=entregado", { method: "PATCH" });
+        cargarPedidos();
+    } catch(e) { alert("No se pudo actualizar"); }
 }
 
 function eliminarPedido(id) {
-    if (!confirm("⚠️ ¿Eliminar este pedido? Esta acción no se puede deshacer.")) return;
+    if (!confirm("¿Eliminar este pedido?")) return;
     cargarPedidos();
 }
 
